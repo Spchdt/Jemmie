@@ -80,6 +80,7 @@ final class AudioEngine {
             try engine.start()
             player.play()
             isRunning = true
+            applySpeakerRoute()
             print("🎙️ [AudioEngine] Started tracking microphone inputs (capture: \(captureSampleRate)Hz, playback: \(playbackSampleRate)Hz)")
         } catch {
             print("🚨 [AudioEngine] CRITICAL: Engine start failed - \(error.localizedDescription). Did the user grant Microphone permissions?")
@@ -115,16 +116,23 @@ final class AudioEngine {
 
     func toggleSpeaker() {
         isSpeakerOn.toggle()
+        applySpeakerRoute()
+    }
+
+    /// Apply the current speaker preference by reconfiguring the audio session category.
+    /// Unlike overrideOutputAudioPort (which is temporary and resets on any route change),
+    /// setting the category options is persistent.
+    func applySpeakerRoute() {
         let session = AVAudioSession.sharedInstance()
         do {
+            var opts: AVAudioSession.CategoryOptions = [.allowBluetooth]
             if isSpeakerOn {
-                try session.overrideOutputAudioPort(.speaker)
-            } else {
-                try session.overrideOutputAudioPort(.none)
+                opts.insert(.defaultToSpeaker)
             }
+            try session.setCategory(.playAndRecord, mode: .default, options: opts)
+            print("[AudioEngine] Route set to \(isSpeakerOn ? "speaker" : "receiver")")
         } catch {
-            print("[AudioEngine] Failed to toggle speaker: \(error)")
-            isSpeakerOn.toggle() // revert on failure
+            print("[AudioEngine] Failed to set speaker route: \(error)")
         }
     }
 }

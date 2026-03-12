@@ -6,13 +6,13 @@ struct TranscriptView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
+                LazyVStack(spacing: 8) {
                     ForEach(transcript.entries) { entry in
                         TranscriptRow(entry: entry)
                             .id(entry.id)
                     }
                 }
-                .padding(.horizontal, Design.Spacing.medium)
+                .padding(.horizontal, Design.Layout.horizontalPadding)
                 .padding(.vertical, 8)
             }
             .scrollIndicators(.hidden)
@@ -35,5 +35,5 @@ struct TranscriptView: View {
 
     return TranscriptView(transcript: vm)
         .frame(height: 300)
-        .background(.black)
+        .background(Color.CallScreen.gradientTop)
 }

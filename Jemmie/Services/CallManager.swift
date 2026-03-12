@@ -19,6 +19,7 @@ final class CallManager: NSObject {
     var onCallEnded: (() -> Void)?
     var onStateChanged: ((CallState) -> Void)?
 
+
     private override init() {
         let config = CXProviderConfiguration()
         config.maximumCallGroups = 1
@@ -51,7 +52,7 @@ final class CallManager: NSObject {
                 self.activeCallUUID = uuid
                 self.updateState(.connecting)
 
-                let handle = CXHandle(type: .generic, value: "Jemmie AI")
+                let handle = CXHandle(type: .generic, value: "Jemmie")
                 let action = CXStartCallAction(call: uuid, handle: handle)
                 action.isVideo = false
 
@@ -113,8 +114,7 @@ extension CallManager: CXProviderDelegate {
 
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
-            try session.overrideOutputAudioPort(.none)
+            try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth])
         } catch {
             print("[CallManager] Audio session error: \(error)")
         }

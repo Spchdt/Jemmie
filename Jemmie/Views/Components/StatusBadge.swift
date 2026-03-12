@@ -18,15 +18,26 @@ struct StatusBadge: View {
             Text(state.displayText)
                 .font(.callout)
                 .bold()
+                .foregroundStyle(.white.opacity(0.9))
         } icon: {
             Circle()
                 .fill(dotColor)
                 .frame(width: Design.Size.statusDot, height: Design.Size.statusDot)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, Design.Spacing.small)
-        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .modifier(GlassCapsuleModifier())
         .accessibilityLabel("Connection status: \(state.displayText)")
+    }
+}
+
+private struct GlassCapsuleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular, in: .capsule)
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }
 
@@ -38,5 +49,5 @@ struct StatusBadge: View {
         StatusBadge(state: .error("Connection lost"))
     }
     .padding()
-    .background(.black)
+    .background(Color.CallScreen.gradientTop)
 }

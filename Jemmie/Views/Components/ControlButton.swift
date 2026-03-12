@@ -8,41 +8,52 @@ struct ControlButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(title, systemImage: systemImage, action: action)
-            .labelStyle(VerticalControlLabelStyle(isActive: isActive))
-            .disabled(!isEnabled)
-            .opacity(isEnabled ? 1.0 : 0.4)
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(isActive ? Color.white.opacity(0.25) : Color.white.opacity(0.08))
+                        .frame(width: Design.Size.controlButtonDiameter, height: Design.Size.controlButtonDiameter)
+
+                    Image(systemName: systemImage)
+                        .font(.system(size: Design.Size.controlIconSize, weight: .medium))
+                        .foregroundStyle(isActive ? .white : .white.opacity(0.85))
+                }
+                .modifier(GlassCircleModifier(isActive: isActive))
+
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1.0 : 0.35)
+        .accessibilityLabel(title)
     }
 }
 
-struct VerticalControlLabelStyle: LabelStyle {
+private struct GlassCircleModifier: ViewModifier {
     let isActive: Bool
 
-    func makeBody(configuration: Configuration) -> some View {
-        VStack(spacing: Design.Spacing.small) {
-            ZStack {
-                Circle()
-                    .fill(isActive ? Color.white.opacity(0.2) : Color.white.opacity(0.08))
-                    .frame(width: Design.Size.controlButtonDiameter, height: Design.Size.controlButtonDiameter)
-
-                configuration.icon
-                    .font(.system(size: Design.Size.controlIconSize))
-                    .foregroundStyle(isActive ? .white : .gray)
-            }
-
-            configuration.title
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .glassEffect(
+                    isActive ? .regular.tint(.white.opacity(0.15)).interactive() : .regular.interactive(),
+                    in: .circle
+                )
+        } else {
+            content
         }
     }
 }
 
 #Preview {
-    HStack(spacing: 40) {
+    HStack(spacing: 36) {
         ControlButton(title: "Mute", systemImage: "mic.fill", isActive: false, isEnabled: true) {}
         ControlButton(title: "Camera", systemImage: "camera.fill", isActive: true, isEnabled: true) {}
         ControlButton(title: "Mute", systemImage: "mic.slash.fill", isActive: false, isEnabled: false) {}
     }
     .padding()
-    .background(.black)
+    .background(Color.CallScreen.gradientTop)
 }

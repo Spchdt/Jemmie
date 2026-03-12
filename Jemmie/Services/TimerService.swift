@@ -24,7 +24,8 @@ final class TimerService {
     }
 
     /// Schedule a countdown timer using AlarmKit.
-    func scheduleTimer(durationSeconds: Int, label: String) async -> Bool {
+    /// Returns the alarm ID on success, or nil on failure.
+    func scheduleTimer(durationSeconds: Int, label: String) async -> UUID? {
         let alert = AlarmPresentation.Alert(
             title: "\(label) — Time's up!",
             stopButton: AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill")
@@ -52,10 +53,20 @@ final class TimerService {
         do {
             _ = try await alarmManager.schedule(id: id, configuration: configuration)
             print("[TimerService] Scheduled timer: \(label) for \(durationSeconds)s (id=\(id))")
-            return true
+            return id
         } catch {
             print("[TimerService] Failed to schedule: \(error)")
-            return false
+            return nil
+        }
+    }
+
+    /// Cancel a running alarm by its ID.
+    func cancelTimer(id: UUID) async {
+        do {
+            try await alarmManager.stop(id: id)
+            print("[TimerService] Cancelled timer (id=\(id))")
+        } catch {
+            print("[TimerService] Failed to cancel: \(error)")
         }
     }
 }

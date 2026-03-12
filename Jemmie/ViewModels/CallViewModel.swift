@@ -10,6 +10,8 @@ final class CallViewModel {
     var isSpeakerOn = false
     var isCameraEnabled = false
     var isAgentSpeaking = false
+    var activeTimers: [ActiveTimer] = []
+    var callDuration: TimeInterval = 0
 
     let transcript = TranscriptViewModel()
 
@@ -20,6 +22,7 @@ final class CallViewModel {
     private let camera = CameraService()
     private let location = LocationService()
     private let timerService = TimerService()
+    private var callTimer: Timer?
 
     init() {
         bindCallManager()
@@ -80,6 +83,7 @@ final class CallViewModel {
             Task { @MainActor in
                 self.audioEngine.start()
                 self.callManager.markCallConnected()
+                self.startCallTimer()
             }
         }
 
@@ -93,6 +97,7 @@ final class CallViewModel {
                 self.isMuted = false
                 self.isSpeakerOn = false
                 self.isCameraEnabled = false
+                self.stopCallTimer()
             }
         }
 
@@ -194,15 +199,34 @@ final class CallViewModel {
         }
     }
 
+    func dismissTimer(_ timer: ActiveTimer) {
+        Task {
+            await timerService.cancelTimer(id: timer.id)
+            activeTimers.removeAll { $0.id == timer.id }
+        }
+    }
+
     private func handleCustomEvent(type: String, payload: [String: Any]) {
         switch type {
         case "SET_TIMER":
             let label = payload["label"] as? String ?? "Timer"
             let duration = payload["duration_seconds"] as? Int ?? 0
             Task {
-                let ok = await timerService.scheduleTimer(durationSeconds: duration, label: label)
-                if ok {
+                if let alarmID = await timerService.scheduleTimer(durationSeconds: duration, label: label) {
+                    let timer = ActiveTimer(
+                        id: alarmID,
+                        label: label,
+                        duration: duration,
+                        fireDate: Date.now.addingTimeInterval(TimeInterval(duration))
+                    )
+                    activeTimers.append(timer)
                     transcript.appendSystemMessage("⏱ Timer set: \(label) (\(duration)s)")
+
+                    // Auto-remove when the timer fires
+                    Task {
+                        try? await Task.sleep(for: .seconds(duration))
+                        activeTimers.removeAll { $0.id == alarmID }
+                    }
                 } else {
                     transcript.appendSystemMessage("⚠️ Could not set timer — AlarmKit permission needed")
                 }
@@ -210,6 +234,23 @@ final class CallViewModel {
         default:
             transcript.appendSystemMessage("[\(type)]")
         }
+    }
+
+    // MARK: - Call Duration Timer
+
+    private func startCallTimer() {
+        callDuration = 0
+        callTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.callDuration += 1
+            }
+        }
+    }
+
+    private func stopCallTimer() {
+        callTimer?.invalidate()
+        callTimer = nil
+        callDuration = 0
     }
 
     // MARK: - Camera

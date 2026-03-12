@@ -14,13 +14,13 @@ enum Design {
     enum Size {
         static let orbDiameter: Double = 120
         static let orbGlowDiameter: Double = 200
-        static let callButtonDiameter: Double = 72
-        static let callButtonRingDiameter: Double = 88
-        static let controlButtonDiameter: Double = 48
+        static let callButtonDiameter: Double = 84
+        static let callButtonRingDiameter: Double = 98
+        static let controlButtonDiameter: Double = 84
         static let statusDot: Double = 8
         static let orbIconSize: Double = 32
-        static let callButtonIconSize: Double = 28
-        static let controlIconSize: Double = 18
+        static let callButtonIconSize: Double = 30
+        static let controlIconSize: Double = 28
     }
 
     // MARK: - Animation
@@ -34,8 +34,10 @@ enum Design {
 
     // MARK: - Layout
     enum Layout {
-        static let transcriptMaxHeight: Double = 200
+        static let transcriptMaxHeight: Double = 280
         static let horizontalPadding: Double = 20
         static let topPadding: Double = 8
+        static let gridColumnSpacing: Double = 35
+        static let gridRowSpacing: Double = 28
     }
 }
