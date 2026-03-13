@@ -21,6 +21,10 @@ final class AudioEngine {
     func start() {
         guard !isRunning else { return }
 
+        // Moreso for VoiceProcessing (AEC) to work properly, the AVAudioSession MUST be
+        // configured with .voiceChat mode before the engine's inputNode is accessed.
+        applySpeakerRoute()
+
         let engine = AVAudioEngine()
         self.engine = engine
 
@@ -39,6 +43,14 @@ final class AudioEngine {
         }
 
         let inputNode = engine.inputNode
+        do {
+            try inputNode.setVoiceProcessingEnabled(true)
+            if #available(iOS 17.0, *) {
+                inputNode.isVoiceProcessingAGCEnabled = true
+            }
+        } catch {
+            print("🚨 [AudioEngine] Failed to enable voice processing (AEC): \(error)")
+        }
         let hwFormat = inputNode.outputFormat(forBus: 0)
 
         guard let targetFormat = AVAudioFormat(
@@ -80,7 +92,6 @@ final class AudioEngine {
             try engine.start()
             player.play()
             isRunning = true
-            applySpeakerRoute()
             print("🎙️ [AudioEngine] Started tracking microphone inputs (capture: \(captureSampleRate)Hz, playback: \(playbackSampleRate)Hz)")
         } catch {
             print("🚨 [AudioEngine] CRITICAL: Engine start failed - \(error.localizedDescription). Did the user grant Microphone permissions?")
@@ -129,7 +140,7 @@ final class AudioEngine {
             if isSpeakerOn {
                 opts.insert(.defaultToSpeaker)
             }
-            try session.setCategory(.playAndRecord, mode: .default, options: opts)
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: opts)
             print("[AudioEngine] Route set to \(isSpeakerOn ? "speaker" : "receiver")")
         } catch {
             print("[AudioEngine] Failed to set speaker route: \(error)")

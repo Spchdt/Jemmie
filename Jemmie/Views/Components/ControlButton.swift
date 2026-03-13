@@ -17,17 +17,19 @@ struct ControlButton: View {
 
                     Image(systemName: systemImage)
                         .font(.system(size: Design.Size.controlIconSize, weight: .medium))
-                        .foregroundStyle(isActive ? .white : .white.opacity(0.85))
+                        .foregroundStyle(!isEnabled ? Color.gray.opacity(0.7) : (isActive ? .white : .white.opacity(0.85)))
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .modifier(GlassCircleModifier(isActive: isActive))
 
                 Text(title)
                     .font(.callout)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(!isEnabled ? Color.gray.opacity(0.7) : .white)
             }
         }
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1.0 : 0.35)
+        // Kept a slight overall opacity drop for disabled states, but the symbol itself is now explicitly grayed out as requested
+        .opacity(isEnabled ? 1.0 : 0.7)
         .accessibilityLabel(title)
     }
 }

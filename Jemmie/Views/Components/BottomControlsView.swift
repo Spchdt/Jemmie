@@ -2,35 +2,41 @@ import SwiftUI
 
 struct BottomControlsView: View {
     let isMuted: Bool
-    let isCameraEnabled: Bool
+    let isSpeakerOn: Bool
     let isConnected: Bool
     let isConnecting: Bool
     let showLog: Bool
     let onToggleMute: () -> Void
     let onToggleCall: () -> Void
-    let onToggleCamera: () -> Void
+    let onToggleSpeaker: () -> Void
     let onToggleLog: () -> Void
     let onShowHelp: () -> Void
     let onShowSettings: () -> Void
 
     var body: some View {
         VStack(spacing: Design.Layout.gridRowSpacing) {
-            // Row 1: Mute, Camera, Log
+            // Row 1: Mute, Speaker, Log
             HStack(spacing: Design.Layout.gridColumnSpacing) {
                 ControlButton(
                     title: isMuted ? "Unmute" : "Mute",
                     systemImage: isMuted ? "mic.slash.fill" : "mic.fill",
                     isActive: isMuted,
                     isEnabled: isConnected,
-                    action: onToggleMute
+                    action: {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        onToggleMute()
+                    }
                 )
 
                 ControlButton(
-                    title: "Camera",
-                    systemImage: isCameraEnabled ? "camera.fill" : "camera",
-                    isActive: isCameraEnabled,
+                    title: "Speaker",
+                    systemImage: isSpeakerOn ? "speaker.wave.3.fill" : "speaker",
+                    isActive: isSpeakerOn,
                     isEnabled: isConnected,
-                    action: onToggleCamera
+                    action: {
+                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                        onToggleSpeaker()
+                    }
                 )
 
                 ControlButton(
@@ -39,6 +45,7 @@ struct BottomControlsView: View {
                     isActive: showLog,
                     isEnabled: true,
                     action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
                             onToggleLog()
                         }
@@ -46,28 +53,38 @@ struct BottomControlsView: View {
                 )
             }
 
-            // Row 2: Help, Call, Settings
+            // Row 2: Help, Call, About
             HStack(spacing: Design.Layout.gridColumnSpacing) {
                 ControlButton(
                     title: "Help",
                     systemImage: "questionmark.circle.fill",
                     isActive: false,
                     isEnabled: true,
-                    action: onShowHelp
+                    action: {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        onShowHelp()
+                    }
                 )
 
                 CallButton(
                     isActive: isConnected,
                     isConnecting: isConnecting,
-                    action: onToggleCall
+                    action: {
+                        let style: UIImpactFeedbackGenerator.FeedbackStyle = isConnected ? .heavy : .medium
+                        UIImpactFeedbackGenerator(style: style).impactOccurred()
+                        onToggleCall()
+                    }
                 )
 
                 ControlButton(
-                    title: "Settings",
-                    systemImage: "gearshape.fill",
+                    title: "About",
+                    systemImage: "info.circle.fill",
                     isActive: false,
                     isEnabled: true,
-                    action: onShowSettings
+                    action: {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        onShowSettings()
+                    }
                 )
             }
         }
@@ -90,13 +107,13 @@ private struct ControlsGlassContainerModifier: ViewModifier {
 #Preview {
     BottomControlsView(
         isMuted: false,
-        isCameraEnabled: false,
+        isSpeakerOn: false,
         isConnected: true,
         isConnecting: false,
         showLog: false,
         onToggleMute: {},
         onToggleCall: {},
-        onToggleCamera: {},
+        onToggleSpeaker: {},
         onToggleLog: {},
         onShowHelp: {},
         onShowSettings: {}

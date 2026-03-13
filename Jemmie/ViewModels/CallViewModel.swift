@@ -25,7 +25,7 @@ final class CallViewModel {
     private let webSocket = WebSocketService()
     private let audioEngine = AudioEngine()
     private let hardwareInput = HardwareInputService()
-    private let camera = CameraService()
+    let camera = CameraService()
     private let location = LocationService()
     private let timerService = TimerService()
     private let notificationService = NotificationService()
@@ -60,7 +60,10 @@ final class CallViewModel {
     }
 
     func toggleCamera() {
-        isCameraEnabled.toggle()
+        self.shouldShowCameraPreview = true
+        self.camera.startSession()
+        transcript.appendSystemMessage("📷 Camera ready. Tap Snap to capture.")
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
     }
 
     func shareLocation() {
@@ -141,14 +144,6 @@ final class CallViewModel {
     // MARK: - Hardware Input Bindings
 
     private func bindHardwareInputs() {
-        hardwareInput.onProximityAway = { [weak self] in
-            guard let self else { return }
-            if self.shouldShowCameraPreview {
-                // When pulled from ear and agent requested a photo
-                self.captureAndSendFrame()
-            }
-        }
-
         hardwareInput.onVolumeUp = { [weak self] in
             guard let self = self, self.isWaitingForBinaryInput else { return }
             self.webSocket.sendText(.volumeUp())
@@ -246,7 +241,8 @@ final class CallViewModel {
             
         case "REQUEST_CAMERA_PREVIEW":
             self.shouldShowCameraPreview = true
-            transcript.appendSystemMessage("📷 Camera ready. Pull away from ear to snap.")
+            self.camera.startSession()
+            transcript.appendSystemMessage("📷 Camera ready. Tap Snap to capture.")
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
 
         case "FETCH_LOCATION":
@@ -300,6 +296,14 @@ final class CallViewModel {
                     }
                 }
             }
+            
+        case "END_CALL":
+            transcript.appendSystemMessage("👋 Call ended by agent")
+            Task { @MainActor in
+                // Delay dropping the call slightly so the TTS engine has time to finish playing the last few words
+                try? await Task.sleep(nanoseconds: 2_500_000_000) // 2.5 seconds
+                self.endCall()
+            }
 
         default:
             transcript.appendSystemMessage("[\(type)]")
@@ -332,12 +336,21 @@ final class CallViewModel {
 
     // MARK: - Camera
 
+    func dismissCameraPreview() {
+        shouldShowCameraPreview = false
+        camera.stopSession()
+        transcript.appendSystemMessage("🚫 Camera capture cancelled")
+    }
+
     func captureAndSendFrame() {
         // Reset the flag immediately so we only take one photo per request
         shouldShowCameraPreview = false
         
         camera.captureFrame { [weak self] jpegData in
-            guard let self, let data = jpegData else { return }
+            guard let self else { return }
+            self.camera.stopSession()
+            guard let data = jpegData else { return }
+            
             let base64 = data.base64EncodedString()
             self.webSocket.sendText(.image(base64Data: base64))
             Task { @MainActor in
