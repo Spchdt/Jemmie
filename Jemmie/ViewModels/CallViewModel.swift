@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 import CoreLocation
+import UIKit
+import UserNotifications
 
 @Observable
 @MainActor
@@ -12,6 +14,10 @@ final class CallViewModel {
     var isAgentSpeaking = false
     var activeTimers: [ActiveTimer] = []
     var callDuration: TimeInterval = 0
+    
+    // New Feature States
+    var isWaitingForBinaryInput = false
+    var shouldShowCameraPreview = false
 
     let transcript = TranscriptViewModel()
 
@@ -22,7 +28,10 @@ final class CallViewModel {
     private let camera = CameraService()
     private let location = LocationService()
     private let timerService = TimerService()
+    private let notificationService = NotificationService()
+    
     private var callTimer: Timer?
+    private var binaryInputTimeoutTask: Task<Void, Never>?
 
     init() {
         bindCallManager()
@@ -97,6 +106,8 @@ final class CallViewModel {
                 self.isMuted = false
                 self.isSpeakerOn = false
                 self.isCameraEnabled = false
+                self.shouldShowCameraPreview = false
+                self.stopBinaryInputCapture()
                 self.stopCallTimer()
             }
         }
@@ -130,30 +141,38 @@ final class CallViewModel {
     // MARK: - Hardware Input Bindings
 
     private func bindHardwareInputs() {
-        hardwareInput.onProximityAway = nil
+        hardwareInput.onProximityAway = { [weak self] in
+            guard let self else { return }
+            if self.shouldShowCameraPreview {
+                // When pulled from ear and agent requested a photo
+                self.captureAndSendFrame()
+            }
+        }
 
         hardwareInput.onVolumeUp = { [weak self] in
-            self?.webSocket.sendText(.volumeUp())
+            guard let self = self, self.isWaitingForBinaryInput else { return }
+            self.webSocket.sendText(.volumeUp())
             Task { @MainActor in
-                self?.transcript.appendSystemMessage("▲ Confirmed")
+                self.transcript.appendSystemMessage("▲ Answered: YES")
+                self.stopBinaryInputCapture()
             }
         }
 
         hardwareInput.onVolumeDown = { [weak self] in
-            self?.webSocket.sendText(.volumeDown())
+            guard let self = self, self.isWaitingForBinaryInput else { return }
+            self.webSocket.sendText(.volumeDown())
             Task { @MainActor in
-                self?.transcript.appendSystemMessage("▼ Denied")
+                self.transcript.appendSystemMessage("▼ Answered: NO")
+                self.stopBinaryInputCapture()
             }
         }
+    }
 
-        hardwareInput.onFlipDetected = { [weak self] in
-            self?.webSocket.sendText(.flipExit())
-            Task { @MainActor in
-                self?.transcript.appendSystemMessage("📱 Flip detected — ending call")
-                try? await Task.sleep(for: .milliseconds(300))
-                self?.endCall()
-            }
-        }
+    private func stopBinaryInputCapture() {
+        isWaitingForBinaryInput = false
+        binaryInputTimeoutTask?.cancel()
+        binaryInputTimeoutTask = nil
+        hardwareInput.stopVolumeInterception()
     }
 
     // MARK: - Server Event Handling
@@ -199,13 +218,6 @@ final class CallViewModel {
         }
     }
 
-    func dismissTimer(_ timer: ActiveTimer) {
-        Task {
-            await timerService.cancelTimer(id: timer.id)
-            activeTimers.removeAll { $0.id == timer.id }
-        }
-    }
-
     private func handleCustomEvent(type: String, payload: [String: Any]) {
         switch type {
         case "SET_TIMER":
@@ -221,7 +233,7 @@ final class CallViewModel {
                     )
                     activeTimers.append(timer)
                     transcript.appendSystemMessage("⏱ Timer set: \(label) (\(duration)s)")
-
+                    
                     // Auto-remove when the timer fires
                     Task {
                         try? await Task.sleep(for: .seconds(duration))
@@ -231,8 +243,73 @@ final class CallViewModel {
                     transcript.appendSystemMessage("⚠️ Could not set timer — AlarmKit permission needed")
                 }
             }
+            
+        case "REQUEST_CAMERA_PREVIEW":
+            self.shouldShowCameraPreview = true
+            transcript.appendSystemMessage("📷 Camera ready. Pull away from ear to snap.")
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+
+        case "FETCH_LOCATION":
+            self.shareLocation()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            
+        case "REQUEST_BINARY_INPUT":
+            self.isWaitingForBinaryInput = true
+            self.hardwareInput.startVolumeInterception()
+            transcript.appendSystemMessage("⏱ Volume override active for Yes/No answer")
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 1.0)
+            
+            // Revert after 15 seconds if they don't answer
+            binaryInputTimeoutTask?.cancel()
+            binaryInputTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { return }
+                self?.stopBinaryInputCapture()
+                self?.transcript.appendSystemMessage("⏱ Volume override expired")
+            }
+            
+        case "COPY_TO_CLIPBOARD":
+            if let text = payload["text"] as? String {
+                UIPasteboard.general.string = text
+                transcript.appendSystemMessage("📋 Copied to clipboard")
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
+            
+        case "OPEN_URL":
+            if let urlString = payload["url"] as? String, let url = URL(string: urlString) {
+                transcript.appendSystemMessage("🔗 Opening link...")
+                UIApplication.shared.open(url)
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            }
+            
+        case "SET_REMINDER":
+            if let message = payload["message"] as? String, let timeIso = payload["time_iso"] as? String {
+                Task {
+                    let success = await notificationService.scheduleReminder(message: message, at: timeIso)
+                    if success {
+                        transcript.appendSystemMessage("⏰ Reminder set: \(message)")
+                        await MainActor.run {
+                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        }
+                    } else {
+                        transcript.appendSystemMessage("⚠️ Failed to set reminder (check permissions)")
+                        await MainActor.run {
+                            UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        }
+                    }
+                }
+            }
+
         default:
             transcript.appendSystemMessage("[\(type)]")
+        }
+    }
+
+    func dismissTimer(_ timer: ActiveTimer) {
+        Task {
+            await timerService.cancelTimer(id: timer.id)
+            activeTimers.removeAll { $0.id == timer.id }
         }
     }
 
@@ -255,13 +332,16 @@ final class CallViewModel {
 
     // MARK: - Camera
 
-    private func captureAndSendFrame() {
+    func captureAndSendFrame() {
+        // Reset the flag immediately so we only take one photo per request
+        shouldShowCameraPreview = false
+        
         camera.captureFrame { [weak self] jpegData in
             guard let self, let data = jpegData else { return }
             let base64 = data.base64EncodedString()
             self.webSocket.sendText(.image(base64Data: base64))
             Task { @MainActor in
-                self.transcript.appendSystemMessage("📸 Sent camera frame")
+                self.transcript.appendSystemMessage("📸 Sent photo")
             }
         }
     }

@@ -3,23 +3,24 @@ import SwiftUI
 struct HomeView: View {
     @State private var viewModel = CallViewModel()
     @State private var showLog = false
+    @State private var showHelp = false
 
     var body: some View {
         ZStack {
             ZStack {
                 LinearGradient(
-                    colors: [Color.cyan.opacity(0.7), Color.mint.opacity(0.7), Color.cyan.opacity(0.7)],
+                    colors: [Color.mint.opacity(0.7), Color.cyan.opacity(0.7), Color.mint.opacity(0.7)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                Color.black.opacity(0.7)
+                Color.black.opacity(0.6)
             }
             .ignoresSafeArea()
             .accessibilityHidden(true)
 
             VStack(spacing: 0) {
                 // Status indicator above name
-                StatusBadge(state: viewModel.callState)
+                StatusBadge(state: viewModel.callState, callDuration: viewModel.callDuration)
                     .padding(.top, Design.Layout.topPadding)
 
                 // Caller-ID style header
@@ -68,10 +69,15 @@ struct HomeView: View {
                     onToggleMute: viewModel.toggleMute,
                     onToggleCall: handleCallToggle,
                     onToggleCamera: viewModel.toggleCamera,
-                    onToggleLog: { showLog.toggle() }
+                    onToggleLog: { showLog.toggle() },
+                    onShowHelp: { showHelp = true },
+                    onShowSettings: { /* TODO: Show Settings */ }
                 )
                 .padding(.bottom, Design.Spacing.extraLarge)
             }
+        }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
         }
         .preferredColorScheme(.dark)
     }

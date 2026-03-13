@@ -34,10 +34,6 @@ struct ClientFrame: Encodable {
         ClientFrame(type: "VOLUME_DOWN", payload: ["intent": "deny"])
     }
 
-    static func flipExit() -> ClientFrame {
-        ClientFrame(type: "FLIP_EXIT", payload: ["intent": "end_session"])
-    }
-
     static func shareLocation(lat: Double, lng: Double) -> ClientFrame {
         ClientFrame(type: "SHARE_LOCATION", payload: ["lat": lat, "lng": lng])
     }

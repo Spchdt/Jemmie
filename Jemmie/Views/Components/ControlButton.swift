@@ -22,8 +22,8 @@ struct ControlButton: View {
                 .modifier(GlassCircleModifier(isActive: isActive))
 
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.callout)
+                    .foregroundStyle(.white)
             }
         }
         .disabled(!isEnabled)

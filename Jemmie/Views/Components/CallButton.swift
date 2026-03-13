@@ -21,15 +21,32 @@ struct CallButton: View {
                         .font(.system(size: Design.Size.callButtonIconSize, weight: .semibold))
                         .foregroundStyle(.white)
                 }
+                .modifier(CallGlassCircleModifier(isActive: isActive))
 
                 Text(buttonLabel)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.callout)
+                    .foregroundStyle(.white)
             }
         }
         .disabled(isConnecting)
         .opacity(isConnecting ? 0.6 : 1.0)
         .accessibilityLabel(buttonLabel)
+    }
+}
+
+private struct CallGlassCircleModifier: ViewModifier {
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .glassEffect(
+                    isActive ? .regular.tint(.red.opacity(0.15)).interactive() : .regular.tint(.green.opacity(0.15)).interactive(),
+                    in: .circle
+                )
+        } else {
+            content
+        }
     }
 }
 

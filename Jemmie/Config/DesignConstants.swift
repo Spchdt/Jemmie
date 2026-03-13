@@ -6,7 +6,7 @@ enum Design {
         static let small: Double = 6
         static let medium: Double = 16
         static let large: Double = 24
-        static let extraLarge: Double = 32
+        static let extraLarge: Double = 20
         static let controlGap: Double = 40
     }
 
@@ -14,9 +14,9 @@ enum Design {
     enum Size {
         static let orbDiameter: Double = 120
         static let orbGlowDiameter: Double = 200
-        static let callButtonDiameter: Double = 84
+        static let callButtonDiameter: Double = 78
         static let callButtonRingDiameter: Double = 98
-        static let controlButtonDiameter: Double = 84
+        static let controlButtonDiameter: Double = 78
         static let statusDot: Double = 8
         static let orbIconSize: Double = 32
         static let callButtonIconSize: Double = 30
@@ -36,8 +36,8 @@ enum Design {
     enum Layout {
         static let transcriptMaxHeight: Double = 280
         static let horizontalPadding: Double = 20
-        static let topPadding: Double = 8
-        static let gridColumnSpacing: Double = 35
-        static let gridRowSpacing: Double = 28
+        static let topPadding: Double = 30
+        static let gridColumnSpacing: Double = 40
+        static let gridRowSpacing: Double = 20
     }
 }

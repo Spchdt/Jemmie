@@ -10,6 +10,8 @@ struct BottomControlsView: View {
     let onToggleCall: () -> Void
     let onToggleCamera: () -> Void
     let onToggleLog: () -> Void
+    let onShowHelp: () -> Void
+    let onShowSettings: () -> Void
 
     var body: some View {
         VStack(spacing: Design.Layout.gridRowSpacing) {
@@ -44,12 +46,30 @@ struct BottomControlsView: View {
                 )
             }
 
-            // Row 2: End/Start call centered
-            CallButton(
-                isActive: isConnected,
-                isConnecting: isConnecting,
-                action: onToggleCall
-            )
+            // Row 2: Help, Call, Settings
+            HStack(spacing: Design.Layout.gridColumnSpacing) {
+                ControlButton(
+                    title: "Help",
+                    systemImage: "questionmark.circle.fill",
+                    isActive: false,
+                    isEnabled: true,
+                    action: onShowHelp
+                )
+
+                CallButton(
+                    isActive: isConnected,
+                    isConnecting: isConnecting,
+                    action: onToggleCall
+                )
+
+                ControlButton(
+                    title: "Settings",
+                    systemImage: "gearshape.fill",
+                    isActive: false,
+                    isEnabled: true,
+                    action: onShowSettings
+                )
+            }
         }
         .modifier(ControlsGlassContainerModifier())
     }
@@ -77,7 +97,9 @@ private struct ControlsGlassContainerModifier: ViewModifier {
         onToggleMute: {},
         onToggleCall: {},
         onToggleCamera: {},
-        onToggleLog: {}
+        onToggleLog: {},
+        onShowHelp: {},
+        onShowSettings: {}
     )
     .padding()
     .background(Color.CallScreen.gradientBottom)
