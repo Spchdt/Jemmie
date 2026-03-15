@@ -13,12 +13,6 @@ struct SettingsView: View {
                         Text("1.0.0")
                             .foregroundColor(.secondary)
                     }
-                    HStack {
-                        Text("Personality")
-                        Spacer()
-                        Text("Gen Alpha")
-                            .foregroundColor(.secondary)
-                    }
                 }
             }
             .navigationTitle("About")
